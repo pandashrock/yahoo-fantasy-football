@@ -31,11 +31,11 @@ if not oauth.token_is_valid():
 with open('../Initial_Setup/league_info_form.txt', 'r') as f:
     rosters = eval(f.read())
 
-league_id = str(rosters['league_id'])
+league_id = xxxxxxx #str(rosters['league_id'])
 
 with open('../YahooGameInfo.json', 'r') as f:
     yahoo_info = json.load(f)
-game_key = yahoo_info['fantasy_content']['game'][0]['game_key']
+game_key = '390' #yahoo_info['fantasy_content']['game'][0]['game_key']
 
 
 columns = ['first', 'last', 'full', 'team',
@@ -100,16 +100,20 @@ for week in range(1, rosters['num_weeks']+1): #16 weeks total
             player_list.append(player_key)
         # Join all player keys so they can all be called at the same time from the API
         all_players_string = ", ".join(player_list)
-        
+        #print(all_players_string)
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/players;player_keys='+all_players_string+'/stats;type=week;week='+str(week)
         response = oauth.session.get(url, params={'format': 'json'})
         player_points_json = response.json()
         
-        
-        
+        #print(player_points_json)
+        qb_count = 1
         wr_count = 1
         rb_count = 1
         bn_count = 1
+        te_count = 1
+        ir_count = 1
+
+        #print(player_points_json)
         for player_num in range(0, len(player_index)-1):
             player = roster['fantasy_content']['team'][1]['roster']['0']['players'][str(player_num)]
             first_name = player['player'][0][2]['name']['first']
@@ -136,85 +140,104 @@ for week in range(1, rosters['num_weeks']+1): #16 weeks total
             
             # We already grabbed all the players points all at once before this for loop started. Now we can get each
             # players points without needing an API call each time. This equals SPEEEEED
-            player_points = float(player_points_json['fantasy_content']['league'][1]['players'][str(player_num)]['player'][1]['player_points']['total'])
-
+            try:
+                player_points = float(player_points_json['fantasy_content']['league'][1]['players'][str(player_num)]['player'][1]['player_points']['total'])
+            except:
+                pass
+            #print(player_points)
             # replace data in dataframe based on index of roster position
                 # this needs to happen because the BN position is not consistant.
                 # it can be out of order if there is more than 1 K or DEF or if
                 # a player is  not started in a roster position
-
+            #print(player_points)
             player_full_stats = pd.Series({'first': first_name,
                                                 'last': last_name,
                                                 'full': full_name,
-                                                'team': team_abbr,
+                                                #'team': team_abbr,
                                                 'manager_name': full_name, #This will be joined to weekly roster df
                                                 'ros_pos': roster_position,
                                                 'player_key': player_key,
                                                 'player_id': player_id,
                                                 'player_points': player_points
                                                            })
+            #print(player_full_stats)
+                                       
+            try:  
+                if roster_position == 'QB':
+                    qb_index = 'QB' + str(qb_count)
+                    qb_count += 1
+                    df_team.loc[qb_index] = player_full_stats
+                    df_manager_team.loc[qb_index] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
+                    df_points.loc[qb_index] = pd.Series({'player_points': player_points})
+                    # Master list of players and Scores
+                    df_players.loc[qb_index] = pd.Series({'player_key': player_key})
+                elif roster_position == 'WR':
+                    wr_index = 'WR' + str(wr_count)
+                    wr_count += 1
+                    df_team.loc[wr_index] = player_full_stats
+                    df_manager_team.loc[wr_index] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
+                    df_points.loc[wr_index] = pd.Series({'player_points': player_points})
+                    # Master list of players and Scores
+                    df_players.loc[wr_index] = pd.Series({'player_key': player_key})
+                elif roster_position == 'RB':
+                    rb_index = 'RB' + str(rb_count)
+                    rb_count += 1
+                    df_team.loc[rb_index] = player_full_stats
+                    df_manager_team.loc[rb_index] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
+                    df_points.loc[rb_index] = pd.Series({'player_points': player_points})
+                    # Master list of players and Scores
+                    df_players.loc[rb_index] = pd.Series({'player_key': player_key})
 
-            if roster_position == 'QB':
-                df_team.loc['QB'] = player_full_stats
-                df_manager_team.loc['QB'] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
-                df_points.loc['QB'] = pd.Series({'player_points': player_points})
-                # Master list of players and Scores
-                df_players.loc['QB'] = pd.Series({'player_key': player_key})
+                elif roster_position == 'TE':
+                    te_index = 'TE' + str(te_count)
+                    te_count += 1
+                    df_team.loc[te_index] = player_full_stats
+                    df_manager_team.loc[te_index] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
+                    df_points.loc[te_index] = pd.Series({'player_points': player_points})
+                    # Master list of players and Scores
+                    df_players.loc[te_index] = pd.Series({'player_key': player_key})
 
-            elif roster_position == 'WR':
-                wr_index = 'WR' + str(wr_count)
-                wr_count += 1
-                df_team.loc[wr_index] = player_full_stats
-                df_manager_team.loc[wr_index] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
-                df_points.loc[wr_index] = pd.Series({'player_points': player_points})
-                # Master list of players and Scores
-                df_players.loc[wr_index] = pd.Series({'player_key': player_key})
+                elif roster_position == 'W/R':
+                    df_team.loc['W/R'] = player_full_stats
+                    df_manager_team.loc['W/R'] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
+                    df_points.loc['W/R'] = pd.Series({'player_points': player_points})
+                    # Master list of players and Scores
+                    df_players.loc['W/R'] = pd.Series({'player_key': player_key})
 
-            elif roster_position == 'RB':
-                rb_index = 'RB' + str(rb_count)
-                rb_count += 1
-                df_team.loc[rb_index] = player_full_stats
-                df_manager_team.loc[rb_index] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
-                df_points.loc[rb_index] = pd.Series({'player_points': player_points})
-                # Master list of players and Scores
-                df_players.loc[rb_index] = pd.Series({'player_key': player_key})
+                elif roster_position == 'K':
+                    df_team.loc['K'] = player_full_stats
+                    df_manager_team.loc['K'] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
+                    df_points.loc['K'] = pd.Series({'player_points': player_points})
+                    # Master list of players and Scores
+                    df_players.loc['K'] = pd.Series({'player_key': player_key})
 
-            elif roster_position == 'TE':
-                df_team.loc['TE'] = player_full_stats
-                df_manager_team.loc['TE'] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
-                df_points.loc['TE'] = pd.Series({'player_points': player_points})
-                # Master list of players and Scores
-                df_players.loc['TE'] = pd.Series({'player_key': player_key})
+                elif roster_position == 'DEF':
+                    df_team.loc['DEF'] = player_full_stats
+                    df_manager_team.loc['DEF'] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
+                    df_points.loc['DEF'] = pd.Series({'player_points': player_points})
+                    # Master list of players and Scores
+                    df_players.loc['DEF'] = pd.Series({'player_key': player_key})
 
-            elif roster_position == 'W/R/T':
-                df_team.loc['W/R/T'] = player_full_stats
-                df_manager_team.loc['W/R/T'] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
-                df_points.loc['W/R/T'] = pd.Series({'player_points': player_points})
-                # Master list of players and Scores
-                df_players.loc['W/R/T'] = pd.Series({'player_key': player_key})
+                elif roster_position == 'BN':
+                    bn_index = 'BN' + str(bn_count)
+                    bn_count += 1
+                    df_team.loc[bn_index] = player_full_stats
+                    df_manager_team.loc[bn_index] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
+                    df_points.loc[bn_index] = pd.Series({'player_points': player_points})
+                    # Master list of players and Scores
+                    df_players.loc[bn_index] = pd.Series({'player_key': player_key})
 
-            elif roster_position == 'K':
-                df_team.loc['K'] = player_full_stats
-                df_manager_team.loc['K'] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
-                df_points.loc['K'] = pd.Series({'player_points': player_points})
-                # Master list of players and Scores
-                df_players.loc['K'] = pd.Series({'player_key': player_key})
+                elif roster_position == 'IR':
+                    ir_index = 'IR' + str(ir_count)
+                    ir_count += 1
+                    df_team.loc[ir_index] = player_full_stats
+                    df_manager_team.loc[ir_index] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
+                    df_points.loc[ir_index] = pd.Series({'player_points': player_points})
+                    # Master list of players and Scores
+                    df_players.loc[ir_index] = pd.Series({'player_key': player_key})
 
-            elif roster_position == 'DEF':
-                df_team.loc['DEF'] = player_full_stats
-                df_manager_team.loc['DEF'] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
-                df_points.loc['DEF'] = pd.Series({'player_points': player_points})
-                # Master list of players and Scores
-                df_players.loc['DEF'] = pd.Series({'player_key': player_key})
-
-            elif roster_position == 'BN':
-                bn_index = 'BN' + str(bn_count)
-                bn_count += 1
-                df_team.loc[bn_index] = player_full_stats
-                df_manager_team.loc[bn_index] = pd.Series({'manager_name': full_name}) # contains managers name and the players full name
-                df_points.loc[bn_index] = pd.Series({'player_points': player_points})
-                # Master list of players and Scores
-                df_players.loc[bn_index] = pd.Series({'player_key': player_key})
+            except ValueError or KeyError:
+                continue
 
 
 
@@ -225,6 +248,7 @@ for week in range(1, rosters['num_weeks']+1): #16 weeks total
 
         df_manager_team.rename(columns = {'manager_name':manager_name}, inplace = True) #change name to match current manager name
         df_points.rename(columns = {'player_points': manager_name}, inplace = True)
+        #print(manager_name,df_points,df_manager_team)
 
         df_wk_roster = pd.concat([df_wk_roster, df_manager_team], axis=1) # join the full league weekly roster with managers name
         df_wk_points = pd.concat([df_wk_points, df_points], axis=1)

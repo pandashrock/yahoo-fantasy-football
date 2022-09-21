@@ -1,5 +1,5 @@
 {
-  "league_id": 123456,
+  "league_id": xxxxxx,
   "num_teams": 8,
   "num_weeks": 16,
   "roster": [
